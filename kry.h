@@ -5,8 +5,8 @@
 
 void generateKeys(int keySize);
 
-void encrypt(int publicExponent, int modulus, string message);
+void encrypt(int publicExponent, int modulus, std::string message);
 
-void decrypt(int privateExponent, int modulus, string cypher);
+void decrypt(int privateExponent, int modulus, std::string cypher);
 
 void breakCypher(int modulus);

@@ -31,8 +31,8 @@ int main(int argc, char* argv[]) {
         char* endptr;
         int keySize = strtol(argv[2], &endptr, 10);
 
-        if (*endptr != '\0') {
-            fprintf(stderr, "Failed to parse key size parameter\n");
+        if (*endptr != '\0' || keySize < 1) {
+            fprintf(stderr, "Failed to parse key size parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
@@ -55,6 +55,16 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Incorrect number of arguments after -b, expected 1 (./kry -b N)\n");
             return EXIT_FAILURE;
         }
+
+        char* endptr;
+        int publicModulus = strtol(argv[2], &endptr, 16);
+
+        if (*endptr != '\0' || publicModulus < 1) {
+            fprintf(stderr, "Failed to parse public modulus parameter, expected positive integer\n");
+            return EXIT_FAILURE;
+        }
+
+        breakCypher(publicModulus);
     }
     else {
         fprintf(stderr, "Unknown mode, expected -g, -e, -d or -b.\n");
@@ -84,18 +94,22 @@ int main(int argc, char* argv[]) {
     return EXIT_SUCCESS;
 }
 
+// prints both prime factors, modulus and, public exponent and private exponent
 void generateKeys(int keySize) {
 
 }
 
+// prints encrypted cyphertext
 void encrypt(int publicExponent, int modulus, string message) {
 
 }
 
+// prints decrypted message
 void decrypt(int privateExponent, int modulus, string cypher) {
 
 }
 
+// prints prime factor
 void breakCypher(int modulus) {
 
 }
