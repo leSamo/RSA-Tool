@@ -103,14 +103,23 @@ int main(int argc, char* argv[]) {
 
         mpz_set_str(modulus, argv[2], 10);
 
-        gmp_printf("%Zd\n", modulus);
-
         if (mpz_set_str(modulus, argv[2], 10) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
-        breakCypher(modulus);
+        mpz_t a,b,c;
+        mpz_init(a);
+        mpz_init(b);
+        mpz_init(c);
+
+        mpz_set_si(a, 7);
+        mpz_set_si(b, 14);
+
+        gcd(a, b, &c);
+        gmp_printf("%Zd\n", c);
+
+        //breakCypher(modulus);
     }
     else {
         fprintf(stderr, "Unknown mode, expected -g, -e, -d or -b.\n");
@@ -143,8 +152,6 @@ void breakCypher(mpz_t modulus) {
     mpz_init(factors[1]);
 
     fermatFactorization(modulus, factors);
-
-    gmp_printf("%Zd %Zd\n", factors[0], factors[1]);
 }
 
 // expects n > 0
@@ -160,7 +167,7 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
     mpf_init(tempFloat);
 
     // if n is even
-    if (mpz_even_p(n) != 0) {
+    if (mpz_even_p(n)) {
         // set factors to 2 and n / 2
         mpz_set_si(factors[0], 2);
         mpz_cdiv_q(factors[1], n, factors[0]);
@@ -199,4 +206,48 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
         //factors[1] = a + b;
         mpz_add(factors[1], a, b);
     }
+}
+
+void gcd(mpz_t a, mpz_t b, mpz_t *out) {
+    int doubles = 0;
+ 
+    // if one of the factors is 0, gcd is the second one
+    if (mpz_cmp_si(a, 0) == 0) {
+        mpz_set(*out, b);
+        return;
+    }
+    if (mpz_cmp_si(b, 0) == 0) {
+        mpz_set(*out, a);
+        return;
+    }
+
+    // a and b is even divide both by 2 (right bit-shift)
+    for (; mpz_even_p(a) && mpz_even_p(b); ++doubles) {
+        mpz_fdiv_q_2exp(a, a, 1);
+        mpz_fdiv_q_2exp(b, b, 1);
+    }
+
+    // dividing a by 2 (right bit-shift) until a becomes odd
+    while (mpz_even_p(a)) {
+        mpz_fdiv_q_2exp(a, a, 1);
+    }
+
+    // From here on, 'a' is always odd.
+    do {
+        // If b is even, remove all factor of 2 in b
+        while (mpz_even_p(b)) {
+            mpz_fdiv_q_2exp(b, b, 1);
+        }
+ 
+        // Now a and b are both odd.
+        //  Swap if necessary so a <= b,
+        //   then set b = b - a (which is even).
+        if (mpz_cmp(a, b) > 0) {
+            mpz_swap(b, a);
+        }
+
+        mpz_sub(b, b, a);
+    } while (mpz_cmp_si(b, 0) != 0);
+
+    mpz_mul_2exp(*out, a, doubles);
 }

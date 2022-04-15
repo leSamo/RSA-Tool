@@ -12,3 +12,5 @@ void decrypt(int privateExponent, int modulus, std::string cypher);
 void breakCypher(mpz_t modulus);
 
 void fermatFactorization(mpz_t n, mpz_t *factors);
+
+void gcd(mpz_t a, mpz_t b, mpz_t *out);
