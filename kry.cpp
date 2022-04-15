@@ -29,6 +29,7 @@ int main(int argc, char* argv[]) {
         }
 
         char* endptr;
+
         int keySize = strtol(argv[2], &endptr, 10);
 
         if (*endptr != '\0' || keySize < 1) {
@@ -43,12 +44,52 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Incorrect number of arguments after -e, expected 3 (./kry -e E N M)\n");
             return EXIT_FAILURE;
         }
+
+        char* endptr;
+
+        int publicExponent = strtol(argv[2], &endptr, 16);
+
+        if (*endptr != '\0' || publicExponent < 1) {
+            fprintf(stderr, "Failed to parse public exponent parameter, expected positive integer\n");
+            return EXIT_FAILURE;
+        }
+
+        int modulus = strtol(argv[3], &endptr, 16);
+
+        if (*endptr != '\0' || modulus < 1) {
+            fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
+            return EXIT_FAILURE;
+        }
+
+        string message = argv[4]
+
+        encrypt(publicExponent, modulus, message);
     }
     else if (mode == "-d") {
         if (argc != 5) {
             fprintf(stderr, "Incorrect number of arguments after -d, expected 3 (./kry -d D N C)\n");
             return EXIT_FAILURE;
         }
+
+        char* endptr;
+
+        int privateExponent = strtol(argv[2], &endptr, 16);
+
+        if (*endptr != '\0' || privateExponent < 1) {
+            fprintf(stderr, "Failed to parse private exponent parameter, expected positive integer\n");
+            return EXIT_FAILURE;
+        }
+
+        int modulus = strtol(argv[3], &endptr, 16);
+
+        if (*endptr != '\0' || modulus < 1) {
+            fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
+            return EXIT_FAILURE;
+        }
+
+        string cypher = argv[4]
+
+        decrypt(privateExponent, modulus, cypher);
     }
     else if (mode == "-b") {
         if (argc != 3) {
@@ -57,10 +98,11 @@ int main(int argc, char* argv[]) {
         }
 
         char* endptr;
-        int publicModulus = strtol(argv[2], &endptr, 16);
+        
+        int modulus = strtol(argv[2], &endptr, 16);
 
-        if (*endptr != '\0' || publicModulus < 1) {
-            fprintf(stderr, "Failed to parse public modulus parameter, expected positive integer\n");
+        if (*endptr != '\0' || modulus < 1) {
+            fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
