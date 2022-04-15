@@ -151,16 +151,17 @@ void breakCypher(mpz_t modulus) {
 void fermatFactorization(mpz_t n, mpz_t *factors) {
     mpz_t a;
     mpz_t b;
+    mpz_t square;
     mpf_t tempFloat;
-    mpf_t square;
 
     mpz_init(a);
     mpz_init(b);
+    mpz_init(square);
     mpf_init(tempFloat);
-    mpf_init(square);
 
-    // if n is even set factors to 2 and n / 2
+    // if n is even
     if (mpz_even_p(n) != 0) {
+        // set factors to 2 and n / 2
         mpz_set_si(factors[0], 2);
         mpz_cdiv_q(factors[1], n, factors[0]);
     }
@@ -189,7 +190,7 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
         mpz_mul(square, a, a);
         mpz_sub(square, square, n);
         mpf_set_z(tempFloat, square);
-        mpf_sqrt(tempFloat, tempFloat)
+        mpf_sqrt(tempFloat, tempFloat);
         mpz_set_f(b, tempFloat);
 
         //factors[0] = a - b;
@@ -198,6 +199,4 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
         //factors[1] = a + b;
         mpz_add(factors[1], a, b);
     }
-
-    //gmp_printf("%Ff\n", tempFloat);
 }
