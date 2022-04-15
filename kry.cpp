@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+
 #include <gmp.h>
 
 #include <iostream>
@@ -61,7 +62,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        string message = argv[4]
+        string message = argv[4];
 
         encrypt(publicExponent, modulus, message);
     }
@@ -87,7 +88,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        string cypher = argv[4]
+        string cypher = argv[4];
 
         decrypt(privateExponent, modulus, cypher);
     }
@@ -97,41 +98,24 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        char* endptr;
-        
-        int modulus = strtol(argv[2], &endptr, 16);
+        mpz_t modulus;
+        mpz_init(modulus);
 
-        if (*endptr != '\0' || modulus < 1) {
+        mpz_set_str(modulus, argv[2], 10);
+
+        gmp_printf("%Zd\n", modulus);
+
+        if (mpz_set_str(modulus, argv[2], 10) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
-        breakCypher(publicModulus);
+        breakCypher(modulus);
     }
     else {
         fprintf(stderr, "Unknown mode, expected -g, -e, -d or -b.\n");
         return EXIT_FAILURE;
     }
-    /*
-    mpz_t a,b,c;
-    mpz_inits(a,b,c,NULL);
-
-    mpz_set_str(a, "1234", 10);
-    mpz_set_str(b,"-5678", 10); //Decimal base
-
-    mpz_add(c,a,b);
-
-    cout<<"\nThe exact result is:";
-    mpz_out_str(stdout, 10, c); //Stream, numerical base, var
-    cout<<endl;
-
-    mpz_abs(c, c);
-    cout<<"The absolute value result is:";
-    mpz_out_str(stdout, 10, c);
-    cout<<endl;
-
-    cin.get();
-    */
 
     return EXIT_SUCCESS;
 }
@@ -152,6 +136,58 @@ void decrypt(int privateExponent, int modulus, string cypher) {
 }
 
 // prints prime factor
-void breakCypher(int modulus) {
+void breakCypher(mpz_t modulus) {
+    mpz_t factors[2];
 
+    mpz_init(factors[0]);
+    mpz_init(factors[1]);
+
+    fermatFactorization(modulus, factors);
+
+    gmp_printf("%Zd %Zd\n", factors[0], factors[1]);
 }
+
+// expects n > 0
+void fermatFactorization(mpz_t n, mpz_t *factors) {
+    mpz_t a;
+    mpz_t b;
+    mpz_t tempInt;
+    mpf_t tempFloat;
+    mpf_t square;
+
+    mpz_init(a);
+    mpz_init(b);
+    mpz_init(tempInt);
+    mpf_init(tempFloat);
+    mpf_init(square);
+
+    if (mpz_even_p(n) != 0) {
+        mpz_set_si(factors[0], 2);
+        mpz_cdiv_q(factors[1], n, factors[0]);
+    }
+
+    mpf_set_z(tempFloat, n);
+    mpf_sqrt(tempFloat, tempFloat);
+    mpf_ceil(tempFloat, tempFloat);
+    mpz_set_f(a, tempFloat);
+
+    mpz_mul(square, a, a);
+    mpz_sub(square, square, n);
+
+    gmp_printf("%Ff\n", tempFloat);
+}
+
+    /*
+    ...
+
+    while (int(square) != square) {
+        ++a;
+
+        square = (a * a - n);
+    }
+
+    b = sqrt(a * a - n);
+
+    factors[0] = a - b;
+    factors[1] = a + b;
+    */
