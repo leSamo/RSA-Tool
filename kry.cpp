@@ -1,8 +1,15 @@
+/* kry.cpp
+ * KRY 2021/22 projekt 2
+ * Samuel Olekšák (xoleks00)
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <gmp.h>
 
 #include <iostream>
+
+#include "kry.h"
 
 using namespace std;
 
@@ -20,6 +27,16 @@ int main(int argc, char* argv[]) {
             fprintf(stderr, "Incorrect number of arguments after -g, expected 1 (./kry -g B)\n");
             return EXIT_FAILURE;
         }
+
+        char* endptr;
+        int keySize = strtol(argv[2], &endptr, 10);
+
+        if (*endptr != '\0') {
+            fprintf(stderr, "Failed to parse key size parameter\n");
+            return EXIT_FAILURE;
+        }
+
+        generateKeys(keySize);
     }
     else if (mode == "-e") {
         if (argc != 5) {
@@ -65,4 +82,20 @@ int main(int argc, char* argv[]) {
     */
 
     return EXIT_SUCCESS;
+}
+
+void generateKeys(int keySize) {
+
+}
+
+void encrypt(int publicExponent, int modulus, string message) {
+
+}
+
+void decrypt(int privateExponent, int modulus, string cypher) {
+
+}
+
+void breakCypher(int modulus) {
+
 }
