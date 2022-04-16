@@ -15,7 +15,6 @@
 using namespace std;
 
 int main(int argc, char* argv[]) {
-    /* ARGUMENT PARSING */
     if (argc < 2) {
         fprintf(stderr, "Missing mode argument, use  -g, -e, -d or -b.\n");
         return EXIT_FAILURE;
@@ -23,6 +22,14 @@ int main(int argc, char* argv[]) {
 
     string mode = argv[1];
 
+    // Key generation mode: ./kry -g B
+    // B (dec) - key size in bytes
+    // --------------------
+    // Outputs: P Q N E D
+    // P, Q - random integers
+    // N - public modulo
+    // E - public exponent
+    // D - private exponent
     if (mode == "-g") {
         if (argc != 3) {
             fprintf(stderr, "Incorrect number of arguments after -g, expected 1 (./kry -g B)\n");
@@ -40,6 +47,13 @@ int main(int argc, char* argv[]) {
 
         generateKeys(keySize);
     }
+    // Message encryption mode ./kry -e E N M
+    // E (hex) - public exponent
+    // N (hex) - public modulo
+    // M (hex) - plaintext message to be encrypted
+    // --------------------
+    // Outputs: C
+    // C - cyphertext of input message
     else if (mode == "-e") {
         if (argc != 5) {
             fprintf(stderr, "Incorrect number of arguments after -e, expected 3 (./kry -e E N M)\n");
@@ -66,6 +80,13 @@ int main(int argc, char* argv[]) {
 
         encrypt(publicExponent, modulus, message);
     }
+    // Message decryption mode ./kry -d D N C
+    // D (hex) - private exponent
+    // N (hex) - public modulo
+    // C (hex) - cyphertext to be decrypted
+    // --------------------
+    // Outputs: M
+    // M - plaintext of input cypher
     else if (mode == "-d") {
         if (argc != 5) {
             fprintf(stderr, "Incorrect number of arguments after -d, expected 3 (./kry -d D N C)\n");
@@ -92,6 +113,11 @@ int main(int argc, char* argv[]) {
 
         decrypt(privateExponent, modulus, cypher);
     }
+    // Key factorization mode ./kry -b N
+    // N (hex) - public modulo
+    // --------------------
+    // Outputs: P
+    // P - one of the prime factors of input N
     else if (mode == "-b") {
         if (argc != 3) {
             fprintf(stderr, "Incorrect number of arguments after -b, expected 1 (./kry -b N)\n");
