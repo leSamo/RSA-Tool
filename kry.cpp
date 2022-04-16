@@ -144,7 +144,7 @@ void breakCypher(mpz_t modulus) {
     gmp_printf("%Zd\n", factors[0]);
 }
 
-// expects n > 0
+// expects n > 0, returns array of two mpz_t
 void fermatFactorization(mpz_t n, mpz_t *factors) {
     mpz_t a;
     mpz_t b;
@@ -162,9 +162,9 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
         mpz_set_si(factors[0], 2);
         mpz_cdiv_q(factors[1], n, factors[0]);
     }
-    // else n is off
+    // else n is odd
     else {
-        // a = ceil(sqrt(n))
+        // a = √n rounded up
         mpf_set_z(tempFloat, n);
         mpf_sqrt(tempFloat, tempFloat);
         mpf_ceil(tempFloat, tempFloat);
@@ -198,28 +198,34 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
     }
 }
 
+// binary GCD algorithm
+// https://en.wikipedia.org/wiki/Binary_GCD_algorithm
 void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
     mpz_t a, b;
 
     mpz_init(a);
     mpz_init(b);
 
+    // copy input params, so they are not mutated
     mpz_set(a, in_a);
     mpz_set(b, in_b);
 
     int doubles = 0;
  
-    // if one of the factors is 0, gcd is the second one
+    // if one of the factors is 0, gcd is the other one
     if (mpz_cmp_si(a, 0) == 0) {
         mpz_set(*out, b);
         return;
     }
+
     if (mpz_cmp_si(b, 0) == 0) {
         mpz_set(*out, a);
         return;
     }
 
     // a and b is even divide both by 2 (right bit-shift)
+    // remember how many times we divided in doubles variable
+    // so that we can revert this
     for (; mpz_even_p(a) && mpz_even_p(b); ++doubles) {
         mpz_fdiv_q_2exp(a, a, 1);
         mpz_fdiv_q_2exp(b, b, 1);
@@ -230,26 +236,30 @@ void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
         mpz_fdiv_q_2exp(a, a, 1);
     }
 
-    // From here on, 'a' is always odd.
     do {
-        // If b is even, remove all factor of 2 in b
+        // if b is even, remove all factor of 2 in b
+        // so that both a an b are odd
         while (mpz_even_p(b)) {
             mpz_fdiv_q_2exp(b, b, 1);
         }
  
-        // Now a and b are both odd.
-        //  Swap if necessary so a <= b,
-        //   then set b = b - a (which is even).
+        // make sure larger operand is saved in b
+        // swap a and b if necessary
         if (mpz_cmp(a, b) > 0) {
             mpz_swap(b, a);
         }
 
+        // set b = b - a, odd - odd = even, so b is now even
         mpz_sub(b, b, a);
+    // repeat until b = 0, GCD is saved in a
     } while (mpz_cmp_si(b, 0) != 0);
 
+    // bitshift left by how many times we divided
+    // both operands by two
     mpz_mul_2exp(*out, a, doubles);
 }
 
+// out = base ^ 2 % modulus
 void modulatedSquare(mpz_t base, mpz_t modulus, mpz_t *out) {
     mpz_t exponent;
 
@@ -258,14 +268,13 @@ void modulatedSquare(mpz_t base, mpz_t modulus, mpz_t *out) {
     mpz_set_si(exponent, 2);
     mpz_set_si(*out, 1);
  
-    while (mpz_cmp_si(exponent, 0) > 0)
-    {
-        /* if y is odd, multiply base with result */
+    while (mpz_cmp_si(exponent, 0) > 0) {
         if (!mpz_even_p(exponent)) {
             mpz_mul(*out, *out, base);
             mpz_mod(*out, *out, modulus);
         }
 
+        // bit shift exponent left (divide by 2)
         mpz_fdiv_q_2exp(exponent, exponent, 1);
 
         mpz_mul(base, base, base);
@@ -273,10 +282,9 @@ void modulatedSquare(mpz_t base, mpz_t modulus, mpz_t *out) {
     }
 }
 
-/* method to return prime divisor for n */
+// Pollard's Rho algorithm for integer factorization
+// https://en.wikipedia.org/wiki/Pollard%27s_rho_algorithm
 void PollardRho(mpz_t n, mpz_t *out) {
-    /* initialize random seed */
-    //srand(time(NULL));
     mpz_t x;
     mpz_t y;
     mpz_t divisor;
@@ -293,19 +301,19 @@ void PollardRho(mpz_t n, mpz_t *out) {
     gmp_randinit_default(randomizer);
     gmp_randseed_ui(randomizer, time(NULL));
  
-    /* no prime divisor for 1 */
+    // one has no prime factors
     if (mpz_cmp_si(n, 1) == 0) {
         mpz_set(*out, n);
         return;
     }
  
-    /* even number means one of the divisors is 2 */
+    // if number is even, one of the factors is definitely 2
     if (mpz_even_p(n)) {
         mpz_set_si(*out, 2);
         return;
     }
  
-    /* we will pick from the range [2, N) */
+    // random [2, N)
     mpz_sub_ui(n, n, 2u);
     mpz_urandomm(x, randomizer, n);
     mpz_add_ui(x, x, 2u);
@@ -318,19 +326,16 @@ void PollardRho(mpz_t n, mpz_t *out) {
     mpz_add_ui(candidate, candidate, 1u);
     mpz_add_ui(n, n, 1u);
  
-    /* Initialize candidate divisor (or result) */
     mpz_set_si(divisor, 1);
- 
-    /* until the prime factor isn't obtained.
-       If n is prime, return n */
+
     while (mpz_cmp_si(divisor, 1) == 0) {
-        /* Tortoise Move: x(i+1) = f(x(i)) */
+        // tortoise step
         modulatedSquare(x, n, &temp);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
         mpz_mod(x, temp, n);
  
-        /* Hare Move: y(i+1) = f(f(y(i))) */
+        // hare step
         modulatedSquare(y, n, &temp);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
@@ -341,17 +346,16 @@ void PollardRho(mpz_t n, mpz_t *out) {
         mpz_add(temp, temp, n);
         mpz_mod(y, temp, n);
  
-        /* check gcd of |x-y| and n */
         mpz_sub(temp, x, y);
         mpz_abs(temp, temp);
         gcd(temp, n, &divisor);
  
-        /* retry if the algorithm fails to find prime factor
-         * with chosen x and c */
+        // try again if fail
         if (mpz_cmp(divisor, n) == 0) {
             PollardRho(n, out);
         }
     }
     
+    // sucessfully found factor
     mpz_set(*out, divisor);
 }
