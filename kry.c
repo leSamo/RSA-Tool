@@ -5,10 +5,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
 #include <gmp.h>
-
-#include <iostream>
 
 #include "kry.h"
 
@@ -20,7 +20,7 @@ int main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
-    string mode = argv[1];
+    char *mode = argv[1];
 
     // Key generation mode: ./kry -g B
     // B (dec) - key size in bytes
@@ -30,7 +30,7 @@ int main(int argc, char* argv[]) {
     // N - public modulo
     // E - public exponent
     // D - private exponent
-    if (mode == "-g") {
+    if (strcmp(mode, "-g") == 0) {
         if (argc != 3) {
             fprintf(stderr, "Incorrect number of arguments after -g, expected 1 (./kry -g B)\n");
             return EXIT_FAILURE;
@@ -54,7 +54,7 @@ int main(int argc, char* argv[]) {
     // --------------------
     // Outputs: C
     // C - cyphertext of input message
-    else if (mode == "-e") {
+    else if (strcmp(mode, "-e") == 0) {
         if (argc != 5) {
             fprintf(stderr, "Incorrect number of arguments after -e, expected 3 (./kry -e E N M)\n");
             return EXIT_FAILURE;
@@ -90,7 +90,7 @@ int main(int argc, char* argv[]) {
     // --------------------
     // Outputs: M
     // M - plaintext of input cypher
-    else if (mode == "-d") {
+    else if (strcmp(mode, "-d") == 0) {
         if (argc != 5) {
             fprintf(stderr, "Incorrect number of arguments after -d, expected 3 (./kry -d D N C)\n");
             return EXIT_FAILURE;
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]) {
     // --------------------
     // Outputs: P
     // P - one of the prime factors of input N
-    else if (mode == "-b") {
+    else if (strcmp(mode, "-b") == 0) {
         if (argc != 3) {
             fprintf(stderr, "Incorrect number of arguments after -b, expected 1 (./kry -b N)\n");
             return EXIT_FAILURE;
