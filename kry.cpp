@@ -91,32 +91,33 @@ int main(int argc, char* argv[]) {
     // Outputs: M
     // M - plaintext of input cypher
     else if (mode == "-d") {
-        /*
         if (argc != 5) {
             fprintf(stderr, "Incorrect number of arguments after -d, expected 3 (./kry -d D N C)\n");
             return EXIT_FAILURE;
         }
 
-        char* endptr;
+        mpz_t privateExponent, modulus, cypher;
 
-        int privateExponent = strtol(argv[2], &endptr, 16);
+        mpz_init(privateExponent);
+        mpz_init(modulus);
+        mpz_init(cypher);
 
-        if (*endptr != '\0' || privateExponent < 1) {
+        if (mpz_set_str(privateExponent, argv[2], 0) || mpz_cmp_si(privateExponent, 1) < 0) {
             fprintf(stderr, "Failed to parse private exponent parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
-        int modulus = strtol(argv[3], &endptr, 16);
-
-        if (*endptr != '\0' || modulus < 1) {
+        if (mpz_set_str(modulus, argv[3], 0) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
-        string cypher = argv[4];
+        if (mpz_set_str(cypher, argv[4], 0) || mpz_cmp_si(cypher, 1) < 0) {
+            fprintf(stderr, "Failed to parse cypher parameter, expected positive integer\n");
+            return EXIT_FAILURE;
+        }
 
         decrypt(privateExponent, modulus, cypher);
-        */
     }
     // Key factorization mode ./kry -b N
     // N (hex) - public modulo
@@ -164,7 +165,12 @@ void encrypt(mpz_t publicExponent, mpz_t modulus, mpz_t message) {
 
 // prints decrypted message
 void decrypt(mpz_t privateExponent, mpz_t modulus, mpz_t cypher) {
+    mpz_t message;
+    mpz_init(message);
 
+    mpz_powm(message, cypher, privateExponent, modulus);
+
+    gmp_printf("0x%Zx\n", message);
 }
 
 // prints prime factor
