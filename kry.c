@@ -12,8 +12,6 @@
 
 #include "kry.h"
 
-using namespace std;
-
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Missing mode argument, use  -g, -e, -d or -b.\n");
@@ -68,20 +66,28 @@ int main(int argc, char* argv[]) {
 
         if (mpz_set_str(publicExponent, argv[2], 0) || mpz_cmp_si(publicExponent, 1) < 0) {
             fprintf(stderr, "Failed to parse public exponent parameter, expected positive integer\n");
+            
+            mpz_clears(publicExponent, modulus, message, 0);
             return EXIT_FAILURE;
         }
 
         if (mpz_set_str(modulus, argv[3], 0) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
+
+            mpz_clears(publicExponent, modulus, message, 0);
             return EXIT_FAILURE;
         }
 
         if (mpz_set_str(message, argv[4], 0) || mpz_cmp_si(message, 1) < 0) {
             fprintf(stderr, "Failed to parse message parameter, expected positive integer\n");
+            
+            mpz_clears(publicExponent, modulus, message, 0);
             return EXIT_FAILURE;
         }
 
         encrypt(publicExponent, modulus, message);
+
+        mpz_clears(publicExponent, modulus, message, 0);
     }
     // Message decryption mode ./kry -d D N C
     // D (hex) - private exponent
@@ -104,20 +110,28 @@ int main(int argc, char* argv[]) {
 
         if (mpz_set_str(privateExponent, argv[2], 0) || mpz_cmp_si(privateExponent, 1) < 0) {
             fprintf(stderr, "Failed to parse private exponent parameter, expected positive integer\n");
+
+            mpz_clears(privateExponent, modulus, cypher, 0);
             return EXIT_FAILURE;
         }
 
         if (mpz_set_str(modulus, argv[3], 0) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
+            
+            mpz_clears(privateExponent, modulus, cypher, 0);
             return EXIT_FAILURE;
         }
 
         if (mpz_set_str(cypher, argv[4], 0) || mpz_cmp_si(cypher, 1) < 0) {
             fprintf(stderr, "Failed to parse cypher parameter, expected positive integer\n");
+            
+            mpz_clears(privateExponent, modulus, cypher, 0);
             return EXIT_FAILURE;
         }
 
         decrypt(privateExponent, modulus, cypher);
+
+        mpz_clears(privateExponent, modulus, cypher, 0);
     }
     // Key factorization mode ./kry -b N
     // N (hex) - public modulo
@@ -135,10 +149,14 @@ int main(int argc, char* argv[]) {
 
         if (mpz_set_str(modulus, argv[2], 0) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
+            
+            mpz_clear(modulus);
             return EXIT_FAILURE;
         }
 
         breakCypher(modulus);
+
+        mpz_clear(modulus);
     }
     else {
         fprintf(stderr, "Unknown mode, expected -g, -e, -d or -b.\n");
@@ -161,6 +179,8 @@ void encrypt(mpz_t publicExponent, mpz_t modulus, mpz_t message) {
     mpz_powm(cypher, message, publicExponent, modulus);
 
     gmp_printf("0x%Zx\n", cypher);
+
+    mpz_clear(cypher);
 }
 
 // prints decrypted message
@@ -171,17 +191,34 @@ void decrypt(mpz_t privateExponent, mpz_t modulus, mpz_t cypher) {
     mpz_powm(message, cypher, privateExponent, modulus);
 
     gmp_printf("0x%Zx\n", message);
+
+    mpz_clear(message);
 }
 
 // prints prime factor
 void breakCypher(mpz_t modulus) {
-    mpz_t factors[2];
+    mpz_t factors[2], remainder;
 
     mpz_init(factors[0]);
     mpz_init(factors[1]);
 
+    mpz_init(remainder);
+
+    for (unsigned int divisor = 2u; divisor <= 1'000'000u; divisor++) {
+        mpz_cdiv_r_ui(remainder, modulus, divisor);
+
+        if (mpz_cmp_si(remainder, 0) == 0) {
+            printf("%d\n", divisor);
+
+            mpz_clears(factors[0], factors[1], remainder, 0);
+            return;
+        }
+    }
+
     PollardRho(modulus, factors);
     gmp_printf("%Zd\n", factors[0]);
+
+    mpz_clears(factors[0], factors[1], remainder, 0);
 }
 
 // expects n > 0, returns array of two mpz_t
@@ -236,6 +273,8 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
         //factors[1] = a + b;
         mpz_add(factors[1], a, b);
     }
+
+    mpz_clears(a, b, square, tempFloat, 0);
 }
 
 // binary GCD algorithm
@@ -255,11 +294,15 @@ void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
     // if one of the factors is 0, gcd is the other one
     if (mpz_cmp_si(a, 0) == 0) {
         mpz_set(*out, b);
+
+        mpz_clears(a, b, 0);
         return;
     }
 
     if (mpz_cmp_si(b, 0) == 0) {
         mpz_set(*out, a);
+
+        mpz_clears(a, b, 0);
         return;
     }
 
@@ -297,6 +340,8 @@ void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
     // bitshift left by how many times we divided
     // both operands by two
     mpz_mul_2exp(*out, a, doubles);
+
+    mpz_clears(a, b, 0);
 }
 
 // out = base ^ 2 % modulus
@@ -320,6 +365,8 @@ void modulatedSquare(mpz_t base, mpz_t modulus, mpz_t *out) {
         mpz_mul(base, base, base);
         mpz_mod(base, base, modulus);
     }
+
+    mpz_clear(exponent);
 }
 
 // Pollard's Rho algorithm for integer factorization
@@ -336,22 +383,26 @@ void PollardRho(mpz_t n, mpz_t *out) {
     mpz_init(divisor);
     mpz_init(candidate);
     mpz_init(temp);
-
-    gmp_randstate_t randomizer;
-    gmp_randinit_default(randomizer);
-    gmp_randseed_ui(randomizer, time(NULL));
  
     // one has no prime factors
     if (mpz_cmp_si(n, 1) == 0) {
         mpz_set(*out, n);
+
+        mpz_clears(x, y, divisor, candidate, temp, 0);
         return;
     }
  
     // if number is even, one of the factors is definitely 2
     if (mpz_even_p(n)) {
         mpz_set_si(*out, 2);
+
+        mpz_clears(x, y, divisor, candidate, temp, 0);
         return;
     }
+
+    gmp_randstate_t randomizer;
+    gmp_randinit_default(randomizer);
+    gmp_randseed_ui(randomizer, time(NULL));
  
     // random [2, N)
     mpz_sub_ui(n, n, 2u);
@@ -398,4 +449,7 @@ void PollardRho(mpz_t n, mpz_t *out) {
     
     // sucessfully found factor
     mpz_set(*out, divisor);
+
+    gmp_randclear(randomizer);
+    mpz_clears(x, y, divisor, candidate, temp, 0);
 }
