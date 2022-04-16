@@ -108,18 +108,7 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        mpz_t a,b,c;
-        mpz_init(a);
-        mpz_init(b);
-        mpz_init(c);
-
-        mpz_set_si(a, 7);
-        mpz_set_si(b, 14);
-
-        gcd(a, b, &c);
-        gmp_printf("%Zd\n", c);
-
-        //breakCypher(modulus);
+        breakCypher(modulus);
     }
     else {
         fprintf(stderr, "Unknown mode, expected -g, -e, -d or -b.\n");
@@ -151,7 +140,8 @@ void breakCypher(mpz_t modulus) {
     mpz_init(factors[0]);
     mpz_init(factors[1]);
 
-    fermatFactorization(modulus, factors);
+    PollardRho(modulus, factors);
+    gmp_printf("%Zd\n", factors[0]);
 }
 
 // expects n > 0
@@ -208,7 +198,15 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
     }
 }
 
-void gcd(mpz_t a, mpz_t b, mpz_t *out) {
+void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
+    mpz_t a, b;
+
+    mpz_init(a);
+    mpz_init(b);
+
+    mpz_set(a, in_a);
+    mpz_set(b, in_b);
+
     int doubles = 0;
  
     // if one of the factors is 0, gcd is the second one
@@ -293,6 +291,7 @@ void PollardRho(mpz_t n, mpz_t *out) {
 
     gmp_randstate_t randomizer;
     gmp_randinit_default(randomizer);
+    gmp_randseed_ui(randomizer, time(NULL));
  
     /* no prime divisor for 1 */
     if (mpz_cmp_si(n, 1) == 0) {
@@ -344,6 +343,7 @@ void PollardRho(mpz_t n, mpz_t *out) {
  
         /* check gcd of |x-y| and n */
         mpz_sub(temp, x, y);
+        mpz_abs(temp, temp);
         gcd(temp, n, &divisor);
  
         /* retry if the algorithm fails to find prime factor
