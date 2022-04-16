@@ -5,9 +5,9 @@
 
 void generateKeys(int keySize);
 
-void encrypt(int publicExponent, int modulus, std::string message);
+void encrypt(mpz_t publicExponent, mpz_t modulus, mpz_t message);
 
-void decrypt(int privateExponent, int modulus, std::string cypher);
+void decrypt(mpz_t privateExponent, mpz_t modulus, mpz_t cypher);
 
 void breakCypher(mpz_t modulus);
 

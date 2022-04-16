@@ -60,23 +60,26 @@ int main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        char* endptr;
+        mpz_t publicExponent, modulus, message;
 
-        int publicExponent = strtol(argv[2], &endptr, 16);
+        mpz_init(publicExponent);
+        mpz_init(modulus);
+        mpz_init(message);
 
-        if (*endptr != '\0' || publicExponent < 1) {
+        if (mpz_set_str(publicExponent, argv[2], 0) || mpz_cmp_si(publicExponent, 1) < 0) {
             fprintf(stderr, "Failed to parse public exponent parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
-        int modulus = strtol(argv[3], &endptr, 16);
-
-        if (*endptr != '\0' || modulus < 1) {
+        if (mpz_set_str(modulus, argv[3], 0) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
 
-        string message = argv[4];
+        if (mpz_set_str(message, argv[4], 0) || mpz_cmp_si(message, 1) < 0) {
+            fprintf(stderr, "Failed to parse message parameter, expected positive integer\n");
+            return EXIT_FAILURE;
+        }
 
         encrypt(publicExponent, modulus, message);
     }
@@ -88,6 +91,7 @@ int main(int argc, char* argv[]) {
     // Outputs: M
     // M - plaintext of input cypher
     else if (mode == "-d") {
+        /*
         if (argc != 5) {
             fprintf(stderr, "Incorrect number of arguments after -d, expected 3 (./kry -d D N C)\n");
             return EXIT_FAILURE;
@@ -112,6 +116,7 @@ int main(int argc, char* argv[]) {
         string cypher = argv[4];
 
         decrypt(privateExponent, modulus, cypher);
+        */
     }
     // Key factorization mode ./kry -b N
     // N (hex) - public modulo
@@ -127,9 +132,7 @@ int main(int argc, char* argv[]) {
         mpz_t modulus;
         mpz_init(modulus);
 
-        mpz_set_str(modulus, argv[2], 10);
-
-        if (mpz_set_str(modulus, argv[2], 10) || mpz_cmp_si(modulus, 1) < 0) {
+        if (mpz_set_str(modulus, argv[2], 0) || mpz_cmp_si(modulus, 1) < 0) {
             fprintf(stderr, "Failed to parse modulus parameter, expected positive integer\n");
             return EXIT_FAILURE;
         }
@@ -150,12 +153,17 @@ void generateKeys(int keySize) {
 }
 
 // prints encrypted cyphertext
-void encrypt(int publicExponent, int modulus, string message) {
+void encrypt(mpz_t publicExponent, mpz_t modulus, mpz_t message) {
+    mpz_t cypher;
+    mpz_init(cypher);
 
+    mpz_powm(cypher, message, publicExponent, modulus);
+
+    gmp_printf("0x%Zx\n", cypher);
 }
 
 // prints decrypted message
-void decrypt(int privateExponent, int modulus, string cypher) {
+void decrypt(mpz_t privateExponent, mpz_t modulus, mpz_t cypher) {
 
 }
 
