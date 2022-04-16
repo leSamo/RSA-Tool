@@ -251,3 +251,107 @@ void gcd(mpz_t a, mpz_t b, mpz_t *out) {
 
     mpz_mul_2exp(*out, a, doubles);
 }
+
+void modulatedSquare(mpz_t base, mpz_t modulus, mpz_t *out) {
+    mpz_t exponent;
+
+    mpz_init(exponent);
+
+    mpz_set_si(exponent, 2);
+    mpz_set_si(*out, 1);
+ 
+    while (mpz_cmp_si(exponent, 0) > 0)
+    {
+        /* if y is odd, multiply base with result */
+        if (!mpz_even_p(exponent)) {
+            mpz_mul(*out, *out, base);
+            mpz_mod(*out, *out, modulus);
+        }
+
+        mpz_fdiv_q_2exp(exponent, exponent, 1);
+
+        mpz_mul(base, base, base);
+        mpz_mod(base, base, modulus);
+    }
+}
+
+/* method to return prime divisor for n */
+void PollardRho(mpz_t n, mpz_t *out) {
+    /* initialize random seed */
+    //srand(time(NULL));
+    mpz_t x;
+    mpz_t y;
+    mpz_t divisor;
+    mpz_t candidate;
+    mpz_t temp;
+
+    mpz_init(x);
+    mpz_init(y);
+    mpz_init(divisor);
+    mpz_init(candidate);
+    mpz_init(temp);
+
+    gmp_randstate_t randomizer;
+    gmp_randinit_default(randomizer);
+ 
+    /* no prime divisor for 1 */
+    if (mpz_cmp_si(n, 1) == 0) {
+        mpz_set(*out, n);
+        return;
+    }
+ 
+    /* even number means one of the divisors is 2 */
+    if (mpz_even_p(n)) {
+        mpz_set_si(*out, 2);
+        return;
+    }
+ 
+    /* we will pick from the range [2, N) */
+    mpz_sub_ui(n, n, 2u);
+    mpz_urandomm(x, randomizer, n);
+    mpz_add_ui(x, x, 2u);
+    mpz_set(y, x);
+    mpz_add_ui(n, n, 2u);
+ 
+    // random [1, N)
+    mpz_sub_ui(n, n, 1u);
+    mpz_urandomm(candidate, randomizer, n);
+    mpz_add_ui(candidate, candidate, 1u);
+    mpz_add_ui(n, n, 1u);
+ 
+    /* Initialize candidate divisor (or result) */
+    mpz_set_si(divisor, 1);
+ 
+    /* until the prime factor isn't obtained.
+       If n is prime, return n */
+    while (mpz_cmp_si(divisor, 1) == 0) {
+        /* Tortoise Move: x(i+1) = f(x(i)) */
+        modulatedSquare(x, n, &temp);
+        mpz_add(temp, temp, candidate);
+        mpz_add(temp, temp, n);
+        mpz_mod(x, temp, n);
+ 
+        /* Hare Move: y(i+1) = f(f(y(i))) */
+        modulatedSquare(y, n, &temp);
+        mpz_add(temp, temp, candidate);
+        mpz_add(temp, temp, n);
+        mpz_mod(y, temp, n);
+
+        modulatedSquare(y, n, &temp);
+        mpz_add(temp, temp, candidate);
+        mpz_add(temp, temp, n);
+        mpz_mod(y, temp, n);
+ 
+        /* check gcd of |x-y| and n */
+        mpz_sub(temp, x, y);
+        gcd(temp, n, &divisor);
+ 
+        /* retry if the algorithm fails to find prime factor
+         * with chosen x and c */
+        if (mpz_cmp(divisor, n) == 0) {
+            PollardRho(n, out);
+        }
+    }
+    
+    mpz_set(*out, divisor);
+}
