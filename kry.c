@@ -204,6 +204,7 @@ void breakCypher(mpz_t modulus) {
 
     mpz_init(remainder);
 
+    // trivial division for first 1 milion factors
     for (unsigned int divisor = 2u; divisor <= 1'000'000u; divisor++) {
         mpz_cdiv_r_ui(remainder, modulus, divisor);
 
@@ -344,31 +345,6 @@ void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
     mpz_clears(a, b, 0);
 }
 
-// out = base ^ 2 % modulus
-void modulatedSquare(mpz_t base, mpz_t modulus, mpz_t *out) {
-    mpz_t exponent;
-
-    mpz_init(exponent);
-
-    mpz_set_si(exponent, 2);
-    mpz_set_si(*out, 1);
- 
-    while (mpz_cmp_si(exponent, 0) > 0) {
-        if (!mpz_even_p(exponent)) {
-            mpz_mul(*out, *out, base);
-            mpz_mod(*out, *out, modulus);
-        }
-
-        // bit shift exponent left (divide by 2)
-        mpz_fdiv_q_2exp(exponent, exponent, 1);
-
-        mpz_mul(base, base, base);
-        mpz_mod(base, base, modulus);
-    }
-
-    mpz_clear(exponent);
-}
-
 // Pollard's Rho algorithm for integer factorization
 // https://en.wikipedia.org/wiki/Pollard%27s_rho_algorithm
 void PollardRho(mpz_t n, mpz_t *out) {
@@ -421,18 +397,18 @@ void PollardRho(mpz_t n, mpz_t *out) {
 
     while (mpz_cmp_si(divisor, 1) == 0) {
         // tortoise step
-        modulatedSquare(x, n, &temp);
+        mpz_powm_ui(temp, x, 2, n);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
         mpz_mod(x, temp, n);
  
         // hare step
-        modulatedSquare(y, n, &temp);
+        mpz_powm_ui(temp, y, 2, n);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
         mpz_mod(y, temp, n);
 
-        modulatedSquare(y, n, &temp);
+        mpz_powm_ui(temp, y, 2, n);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
         mpz_mod(y, temp, n);
