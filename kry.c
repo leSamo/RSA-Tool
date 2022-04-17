@@ -12,6 +12,8 @@
 
 #include "kry.h"
 
+#define MILLER_RABIN_ITERATIONS 40
+
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         fprintf(stderr, "Missing mode argument, use  -g, -e, -d or -b.\n");
@@ -168,7 +170,36 @@ int main(int argc, char* argv[]) {
 
 // prints both prime factors, modulus and, public exponent and private exponent
 void generateKeys(int keySize) {
+    mpz_t a;
+    mpz_init(a);
 
+    generateRandom(keySize, &a);
+    gmp_printf("%Zd\n", a);
+
+    mpz_clear(a);
+}
+
+// generates random number between [2^(n-1),2^n) 
+void generateRandom(int bytes, mpz_t *out) {
+    mpz_t randomPrime;
+    mpz_t lowerBound;
+
+    mpz_init(randomPrime);
+    mpz_init(lowerBound);
+
+    gmp_randstate_t randomizer;
+    gmp_randinit_default(randomizer);
+    gmp_randseed_ui(randomizer, time(NULL));
+
+    mpz_urandomb(randomPrime, randomizer, bytes - 1);
+    mpz_ui_pow_ui(lowerBound, 2, bytes - 1);
+    mpz_add(randomPrime, randomPrime, lowerBound);
+
+    mpz_set(*out, randomPrime);
+
+    gmp_randclear(randomizer);
+
+    mpz_clears(randomPrime, lowerBound, 0);
 }
 
 // prints encrypted cyphertext
@@ -275,7 +306,8 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
         mpz_add(factors[1], a, b);
     }
 
-    mpz_clears(a, b, square, tempFloat, 0);
+    mpz_clears(a, b, square, 0);
+    mpf_clear(tempFloat);
 }
 
 // binary GCD algorithm
@@ -428,4 +460,22 @@ void PollardRho(mpz_t n, mpz_t *out) {
 
     gmp_randclear(randomizer);
     mpz_clears(x, y, divisor, candidate, temp, 0);
+}
+
+bool millerRabin(mpz_t n) {
+    // n - 1 = 2^k * m
+
+    while (mpz_even_p(n)) {
+        mpz_fdiv_q_2exp(n, n, 1);
+    }
+
+    // random a: 1 < a < n - 1
+
+    // b0 = a^m  mod n
+    // if b0 = +- 1 -> return true
+    // else:
+    // b1 = b0^2 mod n
+    // if b0 = 1 -> return false
+    // else if b0 = -1 -> return true
+    // else ...
 }
