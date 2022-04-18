@@ -63,9 +63,7 @@ int main(int argc, char* argv[]) {
 
         mpz_t publicExponent, modulus, message;
 
-        mpz_init(publicExponent);
-        mpz_init(modulus);
-        mpz_init(message);
+        mpz_inits(publicExponent, modulus, message, 0);
 
         if (mpz_set_str(publicExponent, argv[2], 0) || mpz_cmp_si(publicExponent, 1) < 0) {
             fprintf(stderr, "Failed to parse public exponent parameter, expected positive integer\n");
@@ -107,9 +105,7 @@ int main(int argc, char* argv[]) {
 
         mpz_t privateExponent, modulus, cypher;
 
-        mpz_init(privateExponent);
-        mpz_init(modulus);
-        mpz_init(cypher);
+        mpz_inits(privateExponent, modulus, cypher, 0);
 
         if (mpz_set_str(privateExponent, argv[2], 0) || mpz_cmp_si(privateExponent, 1) < 0) {
             fprintf(stderr, "Failed to parse private exponent parameter, expected positive integer\n");
@@ -223,8 +219,7 @@ void generateRandom(int bytes, mpz_t *out) {
     mpz_t randomPrime;
     mpz_t lowerBound;
 
-    mpz_init(randomPrime);
-    mpz_init(lowerBound);
+    mpz_inits(randomPrime, lowerBound, 0);
 
     gmp_randstate_t randomizer;
     gmp_randinit_default(randomizer);
@@ -269,10 +264,7 @@ void decrypt(mpz_t privateExponent, mpz_t modulus, mpz_t cypher) {
 void breakCypher(mpz_t modulus) {
     mpz_t factors[2], remainder;
 
-    mpz_init(factors[0]);
-    mpz_init(factors[1]);
-
-    mpz_init(remainder);
+    mpz_inits(factors[0], factors[1], remainder, 0);
 
     // trivial division for first 1 milion factors
     for (unsigned int divisor = 2u; divisor <= 1'000'000u; divisor++) {
@@ -294,14 +286,10 @@ void breakCypher(mpz_t modulus) {
 
 // expects n > 0, returns array of two mpz_t
 void fermatFactorization(mpz_t n, mpz_t *factors) {
-    mpz_t a;
-    mpz_t b;
-    mpz_t square;
+    mpz_t a, b, square;
     mpf_t tempFloat;
 
-    mpz_init(a);
-    mpz_init(b);
-    mpz_init(square);
+    mpz_inits(a, b, square, 0);
     mpf_init(tempFloat);
 
     // if n is even
@@ -354,8 +342,7 @@ void fermatFactorization(mpz_t n, mpz_t *factors) {
 void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
     mpz_t a, b;
 
-    mpz_init(a);
-    mpz_init(b);
+    mpz_inits(a, b, 0);
 
     // copy input params, so they are not mutated
     mpz_set(a, in_a);
@@ -419,18 +406,10 @@ void gcd(mpz_t in_a, mpz_t in_b, mpz_t *out) {
 // Pollard's Rho algorithm for integer factorization
 // https://en.wikipedia.org/wiki/Pollard%27s_rho_algorithm
 void PollardRho(mpz_t n, mpz_t *out) {
-    mpz_t x;
-    mpz_t y;
-    mpz_t divisor;
-    mpz_t candidate;
-    mpz_t temp;
+    mpz_t x, y, divisor, candidate, temp;
 
-    mpz_init(x);
-    mpz_init(y);
-    mpz_init(divisor);
-    mpz_init(candidate);
-    mpz_init(temp);
- 
+    mpz_inits(x, y, divisor, candidate, temp, 0);
+
     // one has no prime factors
     if (mpz_cmp_si(n, 1) == 0) {
         mpz_set(*out, n);
@@ -512,15 +491,9 @@ bool isPrime(mpz_t n) {
 }
 
 bool millerRabin(mpz_t n) {
-    mpz_t nMinus1;
-    mpz_t m;
-    mpz_t a;
-    mpz_t b;
+    mpz_t nMinus1, m, a, b;
 
-    mpz_init(nMinus1);
-    mpz_init(m);
-    mpz_init(a);
-    mpz_init(b);
+    mpz_inits(nMinus1, m, a, b, 0);
 
     mpz_sub_ui(nMinus1, n, 1u);
     mpz_set(m, nMinus1);
