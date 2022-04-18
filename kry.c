@@ -6,7 +6,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #include <gmp.h>
 
@@ -173,9 +174,12 @@ void generateKeys(int keySize) {
     mpz_t a;
     mpz_init(a);
 
-    generateRandom(keySize, &a);
+    do {
+        generateRandom(keySize, &a);
+    }
+    while (!isPrime(a));
 
-    gmp_printf("%Zd is a prime %d\n", a, millerRabin(a));
+    gmp_printf("%Zd is a prime\n", a);
 
     mpz_clear(a);
 }
@@ -190,7 +194,7 @@ void generateRandom(int bytes, mpz_t *out) {
 
     gmp_randstate_t randomizer;
     gmp_randinit_default(randomizer);
-    gmp_randseed_ui(randomizer, time(NULL));
+    gmp_randseed_ui(randomizer, getRandomSeed());
 
     mpz_urandomb(randomPrime, randomizer, bytes - 1);
     mpz_ui_pow_ui(lowerBound, 2, bytes - 1);
@@ -411,7 +415,7 @@ void PollardRho(mpz_t n, mpz_t *out) {
 
     gmp_randstate_t randomizer;
     gmp_randinit_default(randomizer);
-    gmp_randseed_ui(randomizer, time(NULL));
+    gmp_randseed_ui(randomizer, getRandomSeed());
  
     // random [2, n)
     mpz_sub_ui(n, n, 2u);
@@ -463,6 +467,16 @@ void PollardRho(mpz_t n, mpz_t *out) {
     mpz_clears(x, y, divisor, candidate, temp, 0);
 }
 
+bool isPrime(mpz_t n) {
+    for (int i = 0; i < MILLER_RABIN_ITERATIONS; ++i) {
+        if (!millerRabin(n)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 bool millerRabin(mpz_t n) {
     mpz_t nMinus1;
     mpz_t m;
@@ -484,15 +498,13 @@ bool millerRabin(mpz_t n) {
 
     gmp_randstate_t randomizer;
     gmp_randinit_default(randomizer);
-    gmp_randseed_ui(randomizer, time(NULL));
+    gmp_randseed_ui(randomizer, getRandomSeed());
 
     // random a between [2, n-2]
     mpz_sub_ui(n, n, 3u);
     mpz_urandomm(a, randomizer, n);
     mpz_add_ui(a, a, 2u);
     mpz_add_ui(n, n, 3u);
-
-    gmp_printf("MR: n: %Zd, m: %Zd, a: %Zd\n", n, m, a);
 
     // b0 = a^m mod n
     mpz_powm(b, a, m, n);
@@ -533,4 +545,16 @@ bool millerRabin(mpz_t n) {
     mpz_clears(nMinus1, m, a, b, 0);
 
     return false;
+}
+
+unsigned long int getRandomSeed() {
+    unsigned long int randomSeed;
+
+    if (syscall(SYS_getrandom, &randomSeed, sizeof(unsigned long int), 0) == sizeof(unsigned long int)) {
+        return randomSeed;
+    }
+    else {
+        fprintf(stderr, "Failed to generate random number using getrandom() system call\n");
+        exit(EXIT_FAILURE);
+    }
 }

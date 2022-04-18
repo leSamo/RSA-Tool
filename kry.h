@@ -20,3 +20,7 @@ void PollardRho(mpz_t n, mpz_t *out);
 void generateRandom(int bytes, mpz_t *out);
 
 bool millerRabin(mpz_t n);
+
+bool isPrime(mpz_t n);
+
+unsigned long int getRandomSeed();
