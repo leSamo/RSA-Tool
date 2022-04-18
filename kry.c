@@ -170,18 +170,52 @@ int main(int argc, char* argv[]) {
 }
 
 // prints both prime factors, modulus and, public exponent and private exponent
-void generateKeys(int keySize) {
-    mpz_t a;
-    mpz_init(a);
+void generateKeys(int keyBits) {
+    mpz_t p, q, n, phi, e, d, temp;
+
+    mpz_inits(p, q, n, phi, e, d, temp, 0);
+
+    int primeBits = keyBits % 2 == 0 ? keyBits / 2 : (keyBits + 1) / 2;
 
     do {
-        generateRandom(keySize, &a);
+        do {
+            generateRandom(primeBits, &p);
+        }
+        while (!isPrime(p));
+
+        do {
+            generateRandom(primeBits, &q);
+        }
+        while (!isPrime(q));
+
+        mpz_mul(n, p, q);
     }
-    while (!isPrime(a));
+    while (mpz_sizeinbase(n, 2) != keyBits);
 
-    gmp_printf("%Zd is a prime\n", a);
+    mpz_sub_ui(p, p, 1u);
+    mpz_sub_ui(q, q, 1u);
+    mpz_mul(phi, p, q);
+    mpz_add_ui(p, p, 1u);
+    mpz_add_ui(q, q, 1u);
 
-    mpz_clear(a);
+    gmp_randstate_t randomizer;
+    gmp_randinit_default(randomizer);
+    gmp_randseed_ui(randomizer, getRandomSeed());
+
+    do {
+        // generate random e such that 1 < e < phi(n)
+        mpz_sub_ui(phi, phi, 2u);
+        mpz_urandomm(e, randomizer, phi);
+        mpz_add_ui(e, e, 2u);
+        mpz_add_ui(phi, phi, 2u);
+
+        gcd(e, phi, &temp);
+    }
+    while (mpz_cmp_si(temp, 1) != 0);
+
+    gmp_printf("P: %Zd, Q: %Zd, N: %Zd, Phi: %Zd, e: %Zd\n", p, q, n, phi, e);
+
+    mpz_clears(p, q, n, phi, e, d, temp, 0);
 }
 
 // generates random number between [2^(n-1),2^n) 

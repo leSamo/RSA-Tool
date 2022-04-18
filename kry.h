@@ -3,7 +3,7 @@
  * Samuel Olekšák (xoleks00)
  */
 
-void generateKeys(int keySize);
+void generateKeys(int keyBits);
 
 void encrypt(mpz_t publicExponent, mpz_t modulus, mpz_t message);
 
