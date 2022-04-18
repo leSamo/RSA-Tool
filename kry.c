@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
 
         int keySize = strtol(argv[2], &endptr, 10);
 
-        if (*endptr != '\0' || keySize < 1) {
-            fprintf(stderr, "Failed to parse key size parameter, expected positive integer\n");
+        if (*endptr != '\0' || keySize < 3) {
+            fprintf(stderr, "Failed to parse key size parameter, expected positive integer larger than 2\n");
             return EXIT_FAILURE;
         }
 
@@ -174,7 +174,8 @@ void generateKeys(int keySize) {
     mpz_init(a);
 
     generateRandom(keySize, &a);
-    gmp_printf("%Zd\n", a);
+
+    gmp_printf("%Zd is a prime %d\n", a, millerRabin(a));
 
     mpz_clear(a);
 }
@@ -412,14 +413,14 @@ void PollardRho(mpz_t n, mpz_t *out) {
     gmp_randinit_default(randomizer);
     gmp_randseed_ui(randomizer, time(NULL));
  
-    // random [2, N)
+    // random [2, n)
     mpz_sub_ui(n, n, 2u);
     mpz_urandomm(x, randomizer, n);
     mpz_add_ui(x, x, 2u);
     mpz_set(y, x);
     mpz_add_ui(n, n, 2u);
  
-    // random [1, N)
+    // random [1, n)
     mpz_sub_ui(n, n, 1u);
     mpz_urandomm(candidate, randomizer, n);
     mpz_add_ui(candidate, candidate, 1u);
@@ -463,19 +464,73 @@ void PollardRho(mpz_t n, mpz_t *out) {
 }
 
 bool millerRabin(mpz_t n) {
-    // n - 1 = 2^k * m
+    mpz_t nMinus1;
+    mpz_t m;
+    mpz_t a;
+    mpz_t b;
 
-    while (mpz_even_p(n)) {
-        mpz_fdiv_q_2exp(n, n, 1);
+    mpz_init(nMinus1);
+    mpz_init(m);
+    mpz_init(a);
+    mpz_init(b);
+
+    mpz_sub_ui(nMinus1, n, 1u);
+    mpz_set(m, nMinus1);
+
+    // n - 1 = 2^k * m
+    while (mpz_even_p(m)) {
+        mpz_fdiv_q_2exp(m, m, 1);
     }
 
-    // random a: 1 < a < n - 1
+    gmp_randstate_t randomizer;
+    gmp_randinit_default(randomizer);
+    gmp_randseed_ui(randomizer, time(NULL));
 
-    // b0 = a^m  mod n
-    // if b0 = +- 1 -> return true
-    // else:
-    // b1 = b0^2 mod n
-    // if b0 = 1 -> return false
-    // else if b0 = -1 -> return true
-    // else ...
+    // random a between [2, n-2]
+    mpz_sub_ui(n, n, 3u);
+    mpz_urandomm(a, randomizer, n);
+    mpz_add_ui(a, a, 2u);
+    mpz_add_ui(n, n, 3u);
+
+    gmp_printf("MR: n: %Zd, m: %Zd, a: %Zd\n", n, m, a);
+
+    // b0 = a^m mod n
+    mpz_powm(b, a, m, n);
+
+    // if b0 = +- 1 then n is probably prime
+    if (mpz_cmp(b, nMinus1) == 0 || mpz_cmp_si(b, 1) == 0) {
+        gmp_randclear(randomizer);
+        mpz_clears(nMinus1, m, a, b, 0);
+
+        return true; 
+    }
+
+    // b' = b^2 mod n
+    // if b' = 1 then n is definitely not a prime
+    // else if b' = -1 the n is probably a prime
+    // else generate new b' and try again
+    while (mpz_cmp(m, nMinus1) != 0) {
+        mpz_powm_ui(b, b, 2u, n);
+
+        if (mpz_cmp_si(b, 1) == 0) {
+            gmp_randclear(randomizer);
+            mpz_clears(nMinus1, m, a, b, 0);
+
+            return false;
+        }
+
+        if (mpz_cmp(b, nMinus1) == 0) {
+            gmp_randclear(randomizer);
+            mpz_clears(nMinus1, m, a, b, 0);
+
+            return true;
+        }
+
+        mpz_mul_si(m, m, 2);
+    }
+
+    gmp_randclear(randomizer);
+    mpz_clears(nMinus1, m, a, b, 0);
+
+    return false;
 }

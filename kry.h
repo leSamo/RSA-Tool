@@ -18,3 +18,5 @@ void gcd(mpz_t a, mpz_t b, mpz_t *out);
 void PollardRho(mpz_t n, mpz_t *out);
 
 void generateRandom(int bytes, mpz_t *out);
+
+bool millerRabin(mpz_t n);
