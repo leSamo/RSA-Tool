@@ -41,8 +41,8 @@ int main(int argc, char* argv[]) {
 
         int keySize = strtol(argv[2], &endptr, 10);
 
-        if (*endptr != '\0' || keySize < 3) {
-            fprintf(stderr, "Failed to parse key size parameter, expected positive integer larger than 2\n");
+        if (*endptr != '\0' || keySize < 5) {
+            fprintf(stderr, "Failed to parse key size parameter, expected positive integer larger than 4\n");
             return EXIT_FAILURE;
         }
 
@@ -173,6 +173,7 @@ void generateKeys(int keyBits) {
 
     int primeBits = keyBits % 2 == 0 ? keyBits / 2 : (keyBits + 1) / 2;
 
+    // p and q primes generation
     do {
         do {
             generateRandom(primeBits, &p);
@@ -184,10 +185,13 @@ void generateKeys(int keyBits) {
         }
         while (!isPrime(q));
 
+        // public modulo n = p * q
         mpz_mul(n, p, q);
     }
+    // check whether product of two primes has correct bit size
     while (static_cast<int>(mpz_sizeinbase(n, 2)) != keyBits);
 
+    // phi(n) = (p - 1) * (q - 1)
     mpz_sub_ui(p, p, 1u);
     mpz_sub_ui(q, q, 1u);
     mpz_mul(phi, p, q);
@@ -208,6 +212,7 @@ void generateKeys(int keyBits) {
         // a and b are Bézout coefficients
         extendedEuclid(e, phi, &a, &b, &temp);
     }
+    // generate e until gcd(e, phi) = 1
     while (mpz_cmp_si(temp, 1) != 0);
 
     // calculate modular multiplicative inverse
@@ -218,6 +223,7 @@ void generateKeys(int keyBits) {
 
     gmp_printf("0x%Zx 0x%Zx 0x%Zx 0x%Zx 0x%Zx\n", p, q, n, e, d);
 
+    gmp_randclear(randomizer);
     mpz_clears(p, q, n, phi, e, d, temp, a, b, 0);
 }
 
@@ -226,6 +232,7 @@ void encrypt(mpz_t publicExponent, mpz_t modulus, mpz_t message) {
     mpz_t cypher;
     mpz_init(cypher);
 
+    // c = m^e % n
     mpz_powm(cypher, message, publicExponent, modulus);
 
     gmp_printf("0x%Zx\n", cypher);
@@ -238,6 +245,7 @@ void decrypt(mpz_t privateExponent, mpz_t modulus, mpz_t cypher) {
     mpz_t message;
     mpz_init(message);
 
+    // m = c^d % n
     mpz_powm(message, cypher, privateExponent, modulus);
 
     gmp_printf("0x%Zx\n", message);
@@ -245,7 +253,7 @@ void decrypt(mpz_t privateExponent, mpz_t modulus, mpz_t cypher) {
     mpz_clear(message);
 }
 
-// prints prime factor
+// prints public modulus prime factor
 void breakCypher(mpz_t modulus) {
     mpz_t factors[2], remainder;
 
@@ -263,7 +271,9 @@ void breakCypher(mpz_t modulus) {
         }
     }
 
+    // Pollard Rho factorization if first 1 milion numbers are not factors
     PollardRho(modulus, factors);
+
     gmp_printf("%Zd\n", factors[0]);
 
     mpz_clears(factors[0], factors[1], remainder, 0);
@@ -281,6 +291,7 @@ void generateRandom(int bits, mpz_t *out) {
     gmp_randinit_default(randomizer);
     gmp_randseed_ui(randomizer, getRandomSeed());
 
+    // get random number in range [0, 2^(n-1)) and add 2^(n-1) to it
     mpz_urandomb(randomPrime, randomizer, bits - 1);
     mpz_ui_pow_ui(lowerBound, 2, bits - 1);
     mpz_add(randomPrime, randomPrime, lowerBound);
@@ -302,23 +313,25 @@ void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
         mpz_set(*gcd, b);
     }
     else {
-        mpz_t x1, y1, nestedGcd, temp;
-        mpz_inits(x1, y1, nestedGcd, temp, 0);
+        mpz_t xNested, yNested, gcdNested, temp;
+        mpz_inits(xNested, yNested, gcdNested, temp, 0);
 
+        // b' = b % a
         mpz_mod(temp, b, a);
 
-        extendedEuclid(temp, a, &x1, &y1, &nestedGcd);
+        extendedEuclid(temp, a, &xNested, &yNested, &gcdNested);
 
-        // *x = y1 - b / a * x1;
+        // *x = y' - b / a * x'
         mpz_tdiv_q(temp, b, a);
-        mpz_mul(temp, temp, x1);
-        mpz_sub(*x, y1, temp);
+        mpz_mul(temp, temp, xNested);
+        mpz_sub(*x, yNested, temp);
 
-        // *y = x1;
-        mpz_set(*y, x1);
+        // swap coefficient before next round
+        // *y = x'
+        mpz_set(*y, xNested);
 
-        mpz_set(*gcd, nestedGcd);
-        mpz_clears(x1, y1, nestedGcd, temp, 0);
+        mpz_set(*gcd, gcdNested);
+        mpz_clears(xNested, yNested, gcdNested, temp, 0);
     }
 }
 
