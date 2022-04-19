@@ -167,9 +167,9 @@ int main(int argc, char* argv[]) {
 
 // prints both prime factors, modulus and, public exponent and private exponent
 void generateKeys(int keyBits) {
-    mpz_t p, q, n, phi, e, d, temp;
+    mpz_t p, q, n, phi, e, d, temp, a, b;
 
-    mpz_inits(p, q, n, phi, e, d, temp, 0);
+    mpz_inits(p, q, n, phi, e, d, temp, a, b, 0);
 
     int primeBits = keyBits % 2 == 0 ? keyBits / 2 : (keyBits + 1) / 2;
 
@@ -205,13 +205,46 @@ void generateKeys(int keyBits) {
         mpz_add_ui(e, e, 2u);
         mpz_add_ui(phi, phi, 2u);
 
-        gcd(e, phi, &temp);
+        extendedEuclid(e, phi, &a, &b, &temp);
     }
     while (mpz_cmp_si(temp, 1) != 0);
 
-    gmp_printf("P: %Zd, Q: %Zd, N: %Zd, Phi: %Zd, e: %Zd\n", p, q, n, phi, e);
+    // d = (a % phi + phi) % phi
+    mpz_mod(d, a, phi);
+    mpz_add(d, d, phi);
+    mpz_mod(d, d, phi);
 
-    mpz_clears(p, q, n, phi, e, d, temp, 0);
+    gmp_printf("0x%Zx 0x%Zx 0x%Zx 0x%Zx 0x%Zx\n", p, q, n, e, d);
+
+    mpz_clears(p, q, n, phi, e, d, temp, a, b, 0);
+}
+
+// ax + by = gcd(a, b)
+void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
+    if (mpz_cmp_si(a, 0) == 0) {
+        mpz_set_si(*x, 0);
+        mpz_set_si(*y, 1);
+        mpz_set(*gcd, b);
+    }
+    else {
+        mpz_t x1, y1, nestedGcd, temp;
+        mpz_inits(x1, y1, nestedGcd, temp, 0);
+
+        mpz_mod(temp, b, a);
+
+        extendedEuclid(temp, a, &x1, &y1, &nestedGcd);
+
+        // *x = y1 - b / a * x1;
+        mpz_tdiv_q(temp, b, a);
+        mpz_mul(temp, temp, x1);
+        mpz_sub(*x, y1, temp);
+
+        // *y = x1;
+        mpz_set(*y, x1);
+
+        mpz_set(*gcd, nestedGcd);
+        mpz_clears(x1, y1, nestedGcd, temp, 0);
+    }
 }
 
 // generates random number between [2^(n-1),2^n) 

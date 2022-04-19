@@ -24,3 +24,5 @@ bool millerRabin(mpz_t n);
 bool isPrime(mpz_t n);
 
 unsigned long int getRandomSeed();
+
+void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd);
