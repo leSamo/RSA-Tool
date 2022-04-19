@@ -24,7 +24,7 @@ int main(int argc, char* argv[]) {
     char *mode = argv[1];
 
     // Key generation mode: ./kry -g B
-    // B (dec) - key size in bytes
+    // B (dec) - key size in bits
     // --------------------
     // Outputs: P Q N E D
     // P, Q - random integers
@@ -186,7 +186,7 @@ void generateKeys(int keyBits) {
 
         mpz_mul(n, p, q);
     }
-    while (mpz_sizeinbase(n, 2) != keyBits);
+    while (static_cast<int>(mpz_sizeinbase(n, 2)) != keyBits);
 
     mpz_sub_ui(p, p, 1u);
     mpz_sub_ui(q, q, 1u);
@@ -205,10 +205,12 @@ void generateKeys(int keyBits) {
         mpz_add_ui(e, e, 2u);
         mpz_add_ui(phi, phi, 2u);
 
+        // a and b are Bézout coefficients
         extendedEuclid(e, phi, &a, &b, &temp);
     }
     while (mpz_cmp_si(temp, 1) != 0);
 
+    // calculate modular multiplicative inverse
     // d = (a % phi + phi) % phi
     mpz_mod(d, a, phi);
     mpz_add(d, d, phi);
@@ -217,56 +219,6 @@ void generateKeys(int keyBits) {
     gmp_printf("0x%Zx 0x%Zx 0x%Zx 0x%Zx 0x%Zx\n", p, q, n, e, d);
 
     mpz_clears(p, q, n, phi, e, d, temp, a, b, 0);
-}
-
-// ax + by = gcd(a, b)
-void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
-    if (mpz_cmp_si(a, 0) == 0) {
-        mpz_set_si(*x, 0);
-        mpz_set_si(*y, 1);
-        mpz_set(*gcd, b);
-    }
-    else {
-        mpz_t x1, y1, nestedGcd, temp;
-        mpz_inits(x1, y1, nestedGcd, temp, 0);
-
-        mpz_mod(temp, b, a);
-
-        extendedEuclid(temp, a, &x1, &y1, &nestedGcd);
-
-        // *x = y1 - b / a * x1;
-        mpz_tdiv_q(temp, b, a);
-        mpz_mul(temp, temp, x1);
-        mpz_sub(*x, y1, temp);
-
-        // *y = x1;
-        mpz_set(*y, x1);
-
-        mpz_set(*gcd, nestedGcd);
-        mpz_clears(x1, y1, nestedGcd, temp, 0);
-    }
-}
-
-// generates random number between [2^(n-1),2^n) 
-void generateRandom(int bytes, mpz_t *out) {
-    mpz_t randomPrime;
-    mpz_t lowerBound;
-
-    mpz_inits(randomPrime, lowerBound, 0);
-
-    gmp_randstate_t randomizer;
-    gmp_randinit_default(randomizer);
-    gmp_randseed_ui(randomizer, getRandomSeed());
-
-    mpz_urandomb(randomPrime, randomizer, bytes - 1);
-    mpz_ui_pow_ui(lowerBound, 2, bytes - 1);
-    mpz_add(randomPrime, randomPrime, lowerBound);
-
-    mpz_set(*out, randomPrime);
-
-    gmp_randclear(randomizer);
-
-    mpz_clears(randomPrime, lowerBound, 0);
 }
 
 // prints encrypted cyphertext
@@ -317,8 +269,63 @@ void breakCypher(mpz_t modulus) {
     mpz_clears(factors[0], factors[1], remainder, 0);
 }
 
-// expects n > 0, returns array of two mpz_t
-void fermatFactorization(mpz_t n, mpz_t *factors) {
+// generates random number with specific bit size
+// MSB must be one - result is in the range [2^(n-1),2^n)
+void generateRandom(int bits, mpz_t *out) {
+    mpz_t randomPrime;
+    mpz_t lowerBound;
+
+    mpz_inits(randomPrime, lowerBound, 0);
+
+    gmp_randstate_t randomizer;
+    gmp_randinit_default(randomizer);
+    gmp_randseed_ui(randomizer, getRandomSeed());
+
+    mpz_urandomb(randomPrime, randomizer, bits - 1);
+    mpz_ui_pow_ui(lowerBound, 2, bits - 1);
+    mpz_add(randomPrime, randomPrime, lowerBound);
+
+    mpz_set(*out, randomPrime);
+
+    gmp_randclear(randomizer);
+
+    mpz_clears(randomPrime, lowerBound, 0);
+}
+
+// Extended Euclid algorithm for calculating GCD and Bézout coefficients
+// https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
+// ax + by = gcd(a, b)
+void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
+    if (mpz_cmp_si(a, 0) == 0) {
+        mpz_set_si(*x, 0);
+        mpz_set_si(*y, 1);
+        mpz_set(*gcd, b);
+    }
+    else {
+        mpz_t x1, y1, nestedGcd, temp;
+        mpz_inits(x1, y1, nestedGcd, temp, 0);
+
+        mpz_mod(temp, b, a);
+
+        extendedEuclid(temp, a, &x1, &y1, &nestedGcd);
+
+        // *x = y1 - b / a * x1;
+        mpz_tdiv_q(temp, b, a);
+        mpz_mul(temp, temp, x1);
+        mpz_sub(*x, y1, temp);
+
+        // *y = x1;
+        mpz_set(*y, x1);
+
+        mpz_set(*gcd, nestedGcd);
+        mpz_clears(x1, y1, nestedGcd, temp, 0);
+    }
+}
+
+
+// expects n > 0, returns both factors as array of two mpz_t
+// https://en.wikipedia.org/wiki/Fermat%27s_factorization_method
+void FermatFactorization(mpz_t n, mpz_t *factors) {
     mpz_t a, b, square;
     mpf_t tempFloat;
 
@@ -513,9 +520,10 @@ void PollardRho(mpz_t n, mpz_t *out) {
     mpz_clears(x, y, divisor, candidate, temp, 0);
 }
 
+// checks for primality using multiple rounds of Miller Rabin test
 bool isPrime(mpz_t n) {
     for (int i = 0; i < MILLER_RABIN_ITERATIONS; ++i) {
-        if (!millerRabin(n)) {
+        if (!MillerRabinTest(n)) {
             return false;
         }
     }
@@ -523,7 +531,11 @@ bool isPrime(mpz_t n) {
     return true;
 }
 
-bool millerRabin(mpz_t n) {
+// Miller Rabin primality test
+// https://en.wikipedia.org/wiki/Miller%E2%80%93Rabin_primality_test
+// definitely returns false if number is compount
+// returns true when number is probably a prime
+bool MillerRabinTest(mpz_t n) {
     mpz_t nMinus1, m, a, b;
 
     mpz_inits(nMinus1, m, a, b, 0);
@@ -587,6 +599,7 @@ bool millerRabin(mpz_t n) {
     return false;
 }
 
+// returns a random number in the range of unsigned long int using /dev/urandom
 unsigned long int getRandomSeed() {
     unsigned long int randomSeed;
 

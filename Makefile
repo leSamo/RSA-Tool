@@ -2,7 +2,7 @@ CXX=g++-11.2
 #CXX=clang
 XLOGINXX=xoleks00
 
-OBJ=kry.c
+OBJ=kry.cpp
 BIN=kry
 
 CXXFLAGS:=-Wall -Wextra -Wsuggest-override -Wnull-dereference -Wshadow -Wold-style-cast -pedantic -lgmp -std=c++20
