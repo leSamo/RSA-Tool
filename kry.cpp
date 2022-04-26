@@ -259,12 +259,18 @@ void breakCypher(mpz_t modulus) {
 
     mpz_inits(factors[0], factors[1], remainder, 0);
 
+    // check if 2 is factor, optimizes following trivial division
+    if (mpz_even_p(modulus)) {
+        printf("0x2\n");
+        return;
+    }
+
     // trivial division for first 1 milion factors
-    for (unsigned int divisor = 2u; divisor <= 1'000'000u; divisor++) {
+    for (unsigned int divisor = 3u; divisor < 1'000'000u; divisor += 2) {
         mpz_cdiv_r_ui(remainder, modulus, divisor);
 
         if (mpz_cmp_si(remainder, 0) == 0) {
-            printf("%d\n", divisor);
+            printf("0x%x\n", divisor);
 
             mpz_clears(factors[0], factors[1], remainder, 0);
             return;
@@ -274,7 +280,7 @@ void breakCypher(mpz_t modulus) {
     // Pollard Rho factorization if first 1 milion numbers are not factors
     PollardRho(modulus, factors);
 
-    gmp_printf("%Zd\n", factors[0]);
+    gmp_printf("0x%Zx\n", factors[0]);
 
     mpz_clears(factors[0], factors[1], remainder, 0);
 }

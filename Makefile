@@ -1,4 +1,4 @@
-CXX=g++-11.2
+CXX=g++-11.3
 #CXX=clang
 XLOGINXX=xoleks00
 
