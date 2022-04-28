@@ -64,7 +64,7 @@ int main(int argc, char* argv[]) {
         mpz_t publicExponent, modulus, message;
 
         mpz_inits(publicExponent, modulus, message, 0);
-
+        
         if (mpz_set_str(publicExponent, argv[2], 0) || mpz_cmp_si(publicExponent, 1) < 0) {
             fprintf(stderr, "Failed to parse public exponent parameter, expected positive integer\n");
             
@@ -167,9 +167,9 @@ int main(int argc, char* argv[]) {
 
 // prints both prime factors, modulus and, public exponent and private exponent
 void generateKeys(int keyBits) {
-    mpz_t p, q, n, phi, e, d, temp, a, b;
+    mpz_t p, q, n, phi, e, d, gcd, a, b;
 
-    mpz_inits(p, q, n, phi, e, d, temp, a, b, 0);
+    mpz_inits(p, q, n, phi, e, d, gcd, a, b, 0);
 
     int primeBits = keyBits % 2 == 0 ? keyBits / 2 : (keyBits + 1) / 2;
 
@@ -210,10 +210,10 @@ void generateKeys(int keyBits) {
         mpz_add_ui(phi, phi, 2u);
 
         // a and b are Bézout coefficients
-        extendedEuclid(e, phi, &a, &b, &temp);
+        extendedEuclid(e, phi, &a, &b, &gcd);
     }
     // generate e until gcd(e, phi) = 1
-    while (mpz_cmp_si(temp, 1) != 0);
+    while (mpz_cmp_si(gcd, 1) != 0);
 
     // calculate modular multiplicative inverse
     // d = (a % phi + phi) % phi
@@ -224,7 +224,7 @@ void generateKeys(int keyBits) {
     gmp_printf("0x%Zx 0x%Zx 0x%Zx 0x%Zx 0x%Zx\n", p, q, n, e, d);
 
     gmp_randclear(randomizer);
-    mpz_clears(p, q, n, phi, e, d, temp, a, b, 0);
+    mpz_clears(p, q, n, phi, e, d, gcd, a, b, 0);
 }
 
 // prints encrypted cyphertext
@@ -313,6 +313,9 @@ void generateRandom(int bits, mpz_t *out) {
 // https://en.wikipedia.org/wiki/Extended_Euclidean_algorithm
 // ax + by = gcd(a, b)
 void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
+    // from basic euclidean algorithm we know that if a reaches 0 then b = gcd(a, b)
+    // from Bézout's identity ax + by = gcd(a, b) we know that if b = gcd(a, b) then y must be 1
+    // as a = 0, x can be basically anything
     if (mpz_cmp_si(a, 0) == 0) {
         mpz_set_si(*x, 0);
         mpz_set_si(*y, 1);
@@ -322,21 +325,23 @@ void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
         mpz_t xNested, yNested, gcdNested, temp;
         mpz_inits(xNested, yNested, gcdNested, temp, 0);
 
+        // find the remainder to be used as a base in the next round
         // b' = b % a
         mpz_mod(temp, b, a);
 
         extendedEuclid(temp, a, &xNested, &yNested, &gcdNested);
 
-        // *x = y' - b / a * x'
+        // x = y' - b / a * x'
         mpz_tdiv_q(temp, b, a);
         mpz_mul(temp, temp, xNested);
         mpz_sub(*x, yNested, temp);
 
-        // swap coefficient before next round
-        // *y = x'
+        // swap coefficient before next round so b > a
+        // y = x'
         mpz_set(*y, xNested);
 
         mpz_set(*gcd, gcdNested);
+
         mpz_clears(xNested, yNested, gcdNested, temp, 0);
     }
 }
@@ -345,10 +350,10 @@ void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
 // expects n > 0, returns both factors as array of two mpz_t
 // https://en.wikipedia.org/wiki/Fermat%27s_factorization_method
 void FermatFactorization(mpz_t n, mpz_t *factors) {
-    mpz_t a, b, square;
+    mpz_t a, b, bSquared;
     mpf_t tempFloat;
 
-    mpz_inits(a, b, square, 0);
+    mpz_inits(a, b, bSquared, 0);
     mpf_init(tempFloat);
 
     // if n is even
@@ -365,23 +370,23 @@ void FermatFactorization(mpz_t n, mpz_t *factors) {
         mpf_ceil(tempFloat, tempFloat);
         mpz_set_f(a, tempFloat);
 
-        // square = a^2 - n
-        mpz_mul(square, a, a);
-        mpz_sub(square, square, n);
+        // bSquared = a^2 - n
+        mpz_mul(bSquared, a, a);
+        mpz_sub(bSquared, bSquared, n);
 
-        while (mpz_perfect_square_p(square) == 0) {
+        while (mpz_perfect_square_p(bSquared) == 0) {
             // a += 1
             mpz_add_ui(a, a, 1);
 
-            // square = a^2 - n
-            mpz_mul(square, a, a);
-            mpz_sub(square, square, n);
+            // bSquared = a^2 - n
+            mpz_mul(bSquared, a, a);
+            mpz_sub(bSquared, bSquared, n);
         }
 
         //b = sqrt(a * a - n);
-        mpz_mul(square, a, a);
-        mpz_sub(square, square, n);
-        mpf_set_z(tempFloat, square);
+        mpz_mul(bSquared, a, a);
+        mpz_sub(bSquared, bSquared, n);
+        mpf_set_z(tempFloat, bSquared);
         mpf_sqrt(tempFloat, tempFloat);
         mpz_set_f(b, tempFloat);
 
@@ -392,7 +397,7 @@ void FermatFactorization(mpz_t n, mpz_t *factors) {
         mpz_add(factors[1], a, b);
     }
 
-    mpz_clears(a, b, square, 0);
+    mpz_clears(a, b, bSquared, 0);
     mpf_clear(tempFloat);
 }
 
@@ -505,13 +510,13 @@ void PollardRho(mpz_t n, mpz_t *out) {
     mpz_set_si(divisor, 1);
 
     while (mpz_cmp_si(divisor, 1) == 0) {
-        // tortoise step
+        // baby step
         mpz_powm_ui(temp, x, 2, n);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
         mpz_mod(x, temp, n);
  
-        // hare step
+        // giant step
         mpz_powm_ui(temp, y, 2, n);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
