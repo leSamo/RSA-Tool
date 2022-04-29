@@ -336,7 +336,6 @@ void extendedEuclid(mpz_t a, mpz_t b, mpz_t *x, mpz_t *y, mpz_t *gcd) {
         mpz_mul(temp, temp, xNested);
         mpz_sub(*x, yNested, temp);
 
-        // swap coefficient before next round so b > a
         // y = x'
         mpz_set(*y, xNested);
 
@@ -494,14 +493,14 @@ void PollardRho(mpz_t n, mpz_t *out) {
     gmp_randinit_default(randomizer);
     gmp_randseed_ui(randomizer, getRandomSeed());
  
-    // random [2, n)
+    // x = y = random [2, n)
     mpz_sub_ui(n, n, 2u);
     mpz_urandomm(x, randomizer, n);
     mpz_add_ui(x, x, 2u);
     mpz_set(y, x);
     mpz_add_ui(n, n, 2u);
  
-    // random [1, n)
+    // candidate = random [1, n)
     mpz_sub_ui(n, n, 1u);
     mpz_urandomm(candidate, randomizer, n);
     mpz_add_ui(candidate, candidate, 1u);
@@ -511,12 +510,16 @@ void PollardRho(mpz_t n, mpz_t *out) {
 
     while (mpz_cmp_si(divisor, 1) == 0) {
         // baby step
+        // we apply polynomial x' = (x^2 + 1) % n once
+        // x = (x^2 % n + candidate + n) % n
         mpz_powm_ui(temp, x, 2, n);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
         mpz_mod(x, temp, n);
  
         // giant step
+        // we apply polynomial x' = (x^2 + 1) % n once
+        // y = (y^2 % n + candidate + n) % n
         mpz_powm_ui(temp, y, 2, n);
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
@@ -526,7 +529,8 @@ void PollardRho(mpz_t n, mpz_t *out) {
         mpz_add(temp, temp, candidate);
         mpz_add(temp, temp, n);
         mpz_mod(y, temp, n);
- 
+
+        // divisor = gcd(|x - y|, n)
         mpz_sub(temp, x, y);
         mpz_abs(temp, temp);
         gcd(temp, n, &divisor);
