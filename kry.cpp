@@ -11,7 +11,7 @@
 
 #include <gmp.h>
 
-#include "kry.h"
+#include "kry.hpp"
 
 #define MILLER_RABIN_ITERATIONS 40
 
@@ -262,6 +262,8 @@ void breakCypher(mpz_t modulus) {
     // check if 2 is factor, optimizes following trivial division
     if (mpz_even_p(modulus)) {
         printf("0x2\n");
+
+        mpz_clears(factors[0], factors[1], remainder, 0);
         return;
     }
 

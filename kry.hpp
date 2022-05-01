@@ -1,4 +1,4 @@
-/* kry.h
+/* kry.hpp
  * KRY 2021/22 projekt 2
  * Samuel Olekšák (xoleks00)
  */
